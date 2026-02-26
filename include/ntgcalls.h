@@ -375,6 +375,8 @@ NTG_C_EXPORT int ntg_on_request_broadcast_timestamp(uintptr_t ptr, ntg_broadcast
 NTG_C_EXPORT int ntg_on_request_broadcast_part(uintptr_t ptr, ntg_broadcast_part_callback callback, void* userData);
 
 NTG_C_EXPORT int ntg_get_version(char** buffer);
+// Frees buffers allocated by ntgcalls (e.g., ntg_get_version).
+NTG_C_EXPORT void ntg_free(void* ptr);
 
 NTG_C_EXPORT int ntg_cpu_usage(uintptr_t ptr, double* buffer, ntg_async_struct future);
 

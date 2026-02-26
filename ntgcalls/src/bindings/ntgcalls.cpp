@@ -832,6 +832,12 @@ NTG_C_EXPORT int ntg_on_request_broadcast_part(uintptr_t ptr, ntg_broadcast_part
 NTG_C_EXPORT int ntg_get_version(char** buffer) {
     return copyAndReturn(NTG_VERSION, buffer);
 }
+NTG_C_EXPORT void ntg_free(void* ptr) {
+    if (!ptr) {
+        return;
+    }
+    delete[] reinterpret_cast<uint8_t*>(ptr);
+}
 NTG_C_EXPORT void ntg_register_logger(ntg_log_message_callback callback) {
     ntgcalls::LogSink::registerLogger([callback](const ntgcalls::LogSink::LogMessage &message) {
         char *fileName, *messageContent;
