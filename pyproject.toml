@@ -3,7 +3,6 @@ dynamic = ["version"]
 name = "ntgcalls"
 description = "A Native Implementation of Telegram Calls in a seamless way."
 readme = "README.md"
-license-files = ["LICENSE"]
 classifiers = [
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3 :: Only',

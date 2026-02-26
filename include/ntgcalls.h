@@ -11,7 +11,11 @@
 #define NTG_C_EXPORT __declspec(dllimport) // using the library
 #endif
 #else // not WIN32
+#if defined(__GNUC__) || defined(__clang__)
+#define NTG_C_EXPORT __attribute__((visibility("default")))
+#else
 #define NTG_C_EXPORT
+#endif
 #endif
 
 #ifdef __cplusplus

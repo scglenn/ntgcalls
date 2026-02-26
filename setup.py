@@ -128,6 +128,8 @@ class SharedCommand(Command):
             f'-DCMAKE_BUILD_TYPE={release_kind()}',
             f'-DSTATIC_BUILD={"ON" if self.static else "OFF"}',
             f'-DIS_PYTHON=OFF',
+            f'-DUSE_LIBCXX=ON',
+            f'-DCMAKE_OSX_ARCHITECTURES=arm64',
             f'-DPython_EXECUTABLE={sys.executable}',
             f'-DCMAKE_TOOLCHAIN_FILE={Path(Path.cwd(), "cmake", "Toolchain.cmake")}',
         ]
