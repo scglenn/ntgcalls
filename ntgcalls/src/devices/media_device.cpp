@@ -6,6 +6,7 @@
 #include <ntgcalls/devices/desktop_capturer_module.hpp>
 #include <ntgcalls/exceptions.hpp>
 #include <ntgcalls/devices/camera_capturer_module.hpp>
+#include <rtc_base/logging.h>
 
 #ifdef IS_LINUX
 #include <ntgcalls/devices/alsa_device_module.hpp>
@@ -198,7 +199,7 @@ namespace ntgcalls {
 
     std::unique_ptr<BaseReader> MediaDevice::CreateCameraCapture(const VideoDescription& desc, BaseSink* sink) {
 #if !defined(IS_ANDROID)
-        RTC_LOG(LS_INFO) << "Using CameraCapturer module for input";
+        RTC_LOG(LS_INFO) << "Using CameraCapturer module for input, desc.input=" << desc.input;
         return std::make_unique<CameraCapturerModule>(desc, sink);
 #elif IS_ANDROID
         if (JavaVideoCapturerModule::IsSupported(false)) {
@@ -212,6 +213,7 @@ namespace ntgcalls {
     }
 
     std::unique_ptr<BaseIO> MediaDevice::CreateAudioDevice(const AudioDescription* desc, BaseSink *sink, const bool isCapture) {
+        RTC_LOG(LS_INFO) << "CreateAudioDevice request isCapture=" << isCapture << " desc.input=" << desc->input;
 #ifdef IS_LINUX
         if (PulseDeviceModule::isSupported()) {
             RTC_LOG(LS_INFO) << "Using PulseAudio module for input";

@@ -9,6 +9,7 @@
 #include <libyuv/scale.h>
 #include <ntgcalls/devices/camera_capturer_module.hpp>
 #include <ntgcalls/exceptions.hpp>
+#include <rtc_base/logging.h>
 
 #ifdef IS_LINUX
 #include <modules/video_capture/video_capture_options.h>
@@ -58,6 +59,7 @@ namespace ntgcalls {
         } catch (...) {
             throw MediaDeviceError("Invalid device metadata");
         }
+        RTC_LOG(LS_INFO) << "CameraCapturerModule creating capture for deviceId=" << deviceId;
 #ifdef IS_LINUX
         auto options = webrtc::VideoCaptureOptions();
         options.set_allow_v4l2(true);
@@ -87,6 +89,9 @@ namespace ntgcalls {
 #ifndef IS_WINDOWS
         capability.videoType = webrtc::VideoType::kI420;
 #endif
+        RTC_LOG(LS_INFO) << "CameraCapturerModule selected capability width=" << capability.width
+                         << " height=" << capability.height
+                         << " fps=" << capability.maxFPS;
     }
 
     CameraCapturerModule::~CameraCapturerModule() {
@@ -170,8 +175,10 @@ namespace ntgcalls {
     }
 
     void CameraCapturerModule::open() {
-        if (capturer->StartCapture(capability) != 0) {
+        const auto rc = capturer->StartCapture(capability);
+        if (rc != 0) {
             destroy();
+            RTC_LOG(LS_ERROR) << "CameraCapturerModule StartCapture failed rc=" << rc;
             throw MediaDeviceError("Failed to start camera capture");
         }
     }

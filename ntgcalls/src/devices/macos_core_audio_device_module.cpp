@@ -24,6 +24,7 @@ namespace ntgcalls {
         } catch (...) {
             throw MediaDeviceError("Invalid device metadata");
         }
+        RTC_LOG(LS_INFO) << "MacOSCoreAudioDeviceModule init isCapture=" << isCapture << " deviceId=" << deviceId;
 
         frameSize = static_cast<size_t>(sink->frameSize());
 
@@ -57,6 +58,7 @@ namespace ntgcalls {
             );
 
         if (callbackStatus != noErr || !queue) {
+            RTC_LOG(LS_ERROR) << "AudioQueue create failed status=" << callbackStatus;
             throw MediaDeviceError("Failed to create macOS audio queue");
         }
 
@@ -98,7 +100,9 @@ namespace ntgcalls {
         }
         const auto status = AudioQueueSetProperty(queue, kAudioQueueProperty_CurrentDevice, &cfDeviceId, sizeof(cfDeviceId));
         if (status != noErr) {
-            RTC_LOG(LS_WARNING) << "Failed to select macOS audio device uid=" << deviceId;
+            RTC_LOG(LS_WARNING) << "Failed to select macOS audio device uid=" << deviceId << " status=" << status;
+        } else {
+            RTC_LOG(LS_INFO) << "Selected macOS audio device uid=" << deviceId;
         }
         CFRelease(cfDeviceId);
     }
