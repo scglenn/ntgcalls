@@ -33,7 +33,7 @@ jobs:
       - name: Build shared library
         env:
           NTG_USE_SYSTEM_CLANG: "1"
-          NTG_USE_LIBCXX: "0"
+          NTG_USE_LIBCXX: "1"
         run: |
           python3 setup.py build_lib
 
