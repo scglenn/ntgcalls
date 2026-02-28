@@ -5,6 +5,7 @@
 #pragma once
 
 #if !defined(IS_ANDROID)
+#include <string>
 #include <wrtc/utils/json.hpp>
 #include <rtc_base/platform_thread.h>
 #include <ntgcalls/io/base_reader.hpp>
@@ -21,7 +22,8 @@ namespace ntgcalls {
         VideoDescription desc;
         webrtc::PlatformThread thread;
 
-        static std::unique_ptr<webrtc::DesktopCapturer> CreateCapturer();
+        static webrtc::DesktopCaptureOptions BuildCaptureOptions();
+        static std::unique_ptr<webrtc::DesktopCapturer> CreateCapturer(const std::string& sourceType);
 
     public:
         DesktopCapturerModule(const VideoDescription& desc, BaseSink* sink);

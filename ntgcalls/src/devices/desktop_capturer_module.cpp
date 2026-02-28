@@ -3,6 +3,9 @@
 //
 
 #if !defined(IS_ANDROID)
+#include <set>
+#include <utility>
+
 #include <ntgcalls/exceptions.hpp>
 #include <third_party/libyuv/include/libyuv.h>
 #include <ntgcalls/utils/g_lib_loop_manager.hpp>
@@ -10,13 +13,54 @@
 #include <modules/desktop_capture/desktop_capturer_differ_wrapper.h>
 
 namespace ntgcalls {
+    namespace {
+        using SourceKey = std::pair<std::string, webrtc::DesktopCapturer::SourceId>;
+
+        void AppendSourcesFromCapturer(
+            std::vector<DeviceInfo>& devices,
+            std::set<SourceKey>& seen,
+            const std::unique_ptr<webrtc::DesktopCapturer>& capturer,
+            const std::string& sourceType
+        ) {
+            if (!capturer) {
+                return;
+            }
+            webrtc::DesktopCapturer::SourceList sources;
+            if (!capturer->GetSourceList(&sources)) {
+                return;
+            }
+            for (const auto& [id, title, display_id] : sources) {
+                if (!seen.emplace(sourceType, id).second) {
+                    continue;
+                }
+                const json metadata{
+                    {"id", id},
+                    {"display_id", display_id},
+                    {"source_type", sourceType}
+                };
+                devices.emplace_back(title.empty() ? "Screen" : title, metadata.dump());
+            }
+        }
+    } // namespace
+
     DesktopCapturerModule::DesktopCapturerModule(const VideoDescription& desc, BaseSink* sink): BaseIO(sink), BaseReader(sink), SyncHelper(sink->frameTime()), desc(desc) {
-        capturer = CreateCapturer();
+        std::string sourceType = "auto";
+        webrtc::DesktopCapturer::SourceId sourceId = 0;
         try {
             auto sourceMetadata = json::parse(desc.input);
-            capturer->SelectSource(sourceMetadata["id"].get<webrtc::DesktopCapturer::SourceId>());
+            sourceId = sourceMetadata["id"].get<webrtc::DesktopCapturer::SourceId>();
+            if (sourceMetadata.contains("source_type")) {
+                sourceType = sourceMetadata["source_type"].get<std::string>();
+            }
         } catch (...) {
             throw MediaDeviceError("Invalid device metadata");
+        }
+        capturer = CreateCapturer(sourceType);
+        if (!capturer) {
+            throw MediaDeviceError("Failed to create desktop capturer");
+        }
+        if (!capturer->SelectSource(sourceId)) {
+            throw MediaDeviceError("Failed to select desktop source");
         }
         capturer->SetMaxFrameRate(desc.fps);
     }
@@ -27,16 +71,29 @@ namespace ntgcalls {
         GLibLoopManager::RemoveInstance();
     }
 
-    std::unique_ptr<webrtc::DesktopCapturer> DesktopCapturerModule::CreateCapturer() {
+    webrtc::DesktopCaptureOptions DesktopCapturerModule::BuildCaptureOptions() {
         auto options = webrtc::DesktopCaptureOptions::CreateDefault();
         options.set_detect_updated_region(true);
 #ifdef IS_WINDOWS
         options.set_allow_directx_capturer(true);
 #elif IS_MACOS
         options.set_allow_iosurface(true);
+        options.set_allow_sck_capturer(true);
+        options.set_allow_sck_system_picker(false);
 #elif IS_LINUX
         options.set_allow_pipewire(true);
 #endif
+        return options;
+    }
+
+    std::unique_ptr<webrtc::DesktopCapturer> DesktopCapturerModule::CreateCapturer(const std::string& sourceType) {
+        const auto options = BuildCaptureOptions();
+        if (sourceType == "window") {
+            return webrtc::DesktopCapturer::CreateWindowCapturer(options);
+        }
+        if (sourceType == "screen") {
+            return webrtc::DesktopCapturer::CreateScreenCapturer(options);
+        }
         return webrtc::DesktopCapturer::CreateGenericCapturer(options);
     }
 
@@ -102,20 +159,15 @@ namespace ntgcalls {
 
 
     std::vector<DeviceInfo> DesktopCapturerModule::GetSources() {
-        const auto capturer = CreateCapturer();
-        if (!capturer) {
-            throw MediaDeviceError("Failed to create desktop capturer");
-        }
-        webrtc::DesktopCapturer::SourceList sources;
-        capturer->GetSourceList(&sources);
         std::vector<DeviceInfo> devices;
-        for (const auto& [id, title, display_id] : sources) {
-            const json metadata{
-                {"id", id},
-                {"display_id", display_id}
-            };
-            devices.emplace_back(title.empty() ? "Screen" : title, metadata.dump());
-        }
+        std::set<SourceKey> seen;
+        auto windowCapturer = CreateCapturer("window");
+        auto screenCapturer = CreateCapturer("screen");
+        auto genericCapturer = CreateCapturer("auto");
+
+        AppendSourcesFromCapturer(devices, seen, windowCapturer, "window");
+        AppendSourcesFromCapturer(devices, seen, screenCapturer, "screen");
+        AppendSourcesFromCapturer(devices, seen, genericCapturer, "auto");
         return devices;
     }
 
@@ -138,7 +190,7 @@ namespace ntgcalls {
     }
 
     bool DesktopCapturerModule::IsSupported() {
-        return CreateCapturer() != nullptr;
+        return CreateCapturer("auto") != nullptr;
     }
 } // ntgcalls
 
