@@ -76,10 +76,11 @@ namespace ntgcalls {
 
         const auto info = CreateDeviceInfo();
         if (!info) {
-            throw MediaDeviceError("Failed to create camera device info");
+            std::fprintf(stderr, "[ntgcalls] CameraCapturerModule DeviceInfo unavailable, using direct-id fallback\n");
+            std::fflush(stderr);
         }
 
-        const auto count = info->NumberOfDevices();
+        const auto count = info ? info->NumberOfDevices() : 0;
         if (count > 0) {
             std::vector<std::pair<std::string, std::string>> devices;
             devices.reserve(count);
@@ -194,11 +195,17 @@ namespace ntgcalls {
         requested.width = desc.width;
         requested.height = desc.height;
         requested.maxFPS = desc.fps;
-        if (info->GetBestMatchedCapability(capturer->CurrentDeviceName(), requested, capability) != 0) {
-            capability = BuildFallbackCapability(info, capturer->CurrentDeviceName(), desc);
-        }
-        if (!capability.width || !capability.height || !capability.maxFPS) {
-            capability = BuildFallbackCapability(info, capturer->CurrentDeviceName(), desc);
+        if (info) {
+            if (info->GetBestMatchedCapability(capturer->CurrentDeviceName(), requested, capability) != 0) {
+                capability = BuildFallbackCapability(info, capturer->CurrentDeviceName(), desc);
+            }
+            if (!capability.width || !capability.height || !capability.maxFPS) {
+                capability = BuildFallbackCapability(info, capturer->CurrentDeviceName(), desc);
+            }
+        } else {
+            capability.width = desc.width;
+            capability.height = desc.height;
+            capability.maxFPS = desc.fps;
         }
 #ifndef IS_WINDOWS
         capability.videoType = webrtc::VideoType::kI420;
