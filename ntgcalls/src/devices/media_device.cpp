@@ -46,7 +46,7 @@ namespace ntgcalls {
     }
 
     std::vector<DeviceInfo> MediaDevice::GetScreenDevices() {
-#if !defined(IS_ANDROID) && !defined(IS_MACOS)
+#if !defined(IS_ANDROID)
         if (DesktopCapturerModule::IsSupported()) {
             return DesktopCapturerModule::GetSources();
         }
@@ -62,7 +62,7 @@ namespace ntgcalls {
     }
 
     std::vector<DeviceInfo> MediaDevice::GetCameraDevices() {
-#if !defined(IS_ANDROID) && !defined(IS_MACOS)
+#if !defined(IS_ANDROID)
         return CameraCapturerModule::GetSources();
 #elif IS_ANDROID
         if (JavaVideoCapturerModule::IsSupported(false)) {
@@ -75,7 +75,7 @@ namespace ntgcalls {
     }
 
     std::unique_ptr<BaseReader> MediaDevice::CreateDesktopCapture(const VideoDescription& desc, BaseSink* sink) {
-#if !defined(IS_ANDROID) && !defined(IS_MACOS)
+#if !defined(IS_ANDROID)
         if (DesktopCapturerModule::IsSupported()) {
             RTC_LOG(LS_INFO) << "Using DesktopCapturer module for input";
             return std::make_unique<DesktopCapturerModule>(desc, sink);
@@ -90,7 +90,7 @@ namespace ntgcalls {
     }
 
     std::unique_ptr<BaseReader> MediaDevice::CreateCameraCapture(const VideoDescription& desc, BaseSink* sink) {
-#if !defined(IS_ANDROID) && !defined(IS_MACOS)
+#if !defined(IS_ANDROID)
         RTC_LOG(LS_INFO) << "Using CameraCapturer module for input";
         return std::make_unique<CameraCapturerModule>(desc, sink);
 #elif IS_ANDROID

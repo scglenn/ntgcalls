@@ -2,7 +2,7 @@
 // Created by Laky64 on 17/10/24.
 //
 
-#if !defined(IS_ANDROID) && !defined(IS_MACOS)
+#if !defined(IS_ANDROID)
 #include <libyuv/scale.h>
 #include <ntgcalls/devices/camera_capturer_module.hpp>
 #include <ntgcalls/exceptions.hpp>

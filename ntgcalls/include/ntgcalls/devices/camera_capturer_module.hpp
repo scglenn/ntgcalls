@@ -4,7 +4,7 @@
 
 #pragma once
 
-#if !defined(IS_ANDROID) && !defined(IS_MACOS)
+#if !defined(IS_ANDROID)
 #include <api/video/video_frame.h>
 #include <api/video/video_sink_interface.h>
 #include <wrtc/utils/json.hpp>
