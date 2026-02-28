@@ -35,6 +35,15 @@ namespace ntgcalls {
         std::fflush(stderr);
 
         frameSize = static_cast<size_t>(sink->frameSize());
+        std::fprintf(
+            stderr,
+            "[ntgcalls] MacOSCoreAudioDeviceModule stream config isCapture=%d rate=%d channels=%d frameSize=%zu\n",
+            isCapture ? 1 : 0,
+            rate,
+            channels,
+            frameSize
+        );
+        std::fflush(stderr);
 
         streamFormat.mSampleRate = static_cast<Float64>(rate);
         streamFormat.mFormatID = kAudioFormatLinearPCM;
@@ -71,6 +80,8 @@ namespace ntgcalls {
             std::fflush(stderr);
             throw MediaDeviceError("Failed to create macOS audio queue");
         }
+        std::fprintf(stderr, "[ntgcalls] AudioQueue create ok status=%d queue=%p\n", static_cast<int>(callbackStatus), static_cast<void*>(queue));
+        std::fflush(stderr);
 
         applyDevice();
         enqueueInitialBuffers();
@@ -94,6 +105,8 @@ namespace ntgcalls {
             return;
         }
         const auto status = AudioQueueStart(queue, nullptr);
+        std::fprintf(stderr, "[ntgcalls] AudioQueueStart status=%d isCapture=%d\n", static_cast<int>(status), isCapture ? 1 : 0);
+        std::fflush(stderr);
         if (status != noErr) {
             throw MediaDeviceError("Failed to start macOS audio queue");
         }
@@ -128,19 +141,44 @@ namespace ntgcalls {
         const UInt32 queueBufferSize = static_cast<UInt32>(std::max<size_t>(frameSize * 2, 4096));
         for (size_t i = 0; i < kQueueBufferCount; ++i) {
             AudioQueueBufferRef bufferRef = nullptr;
-            if (AudioQueueAllocateBuffer(queue, queueBufferSize, &bufferRef) != noErr || !bufferRef) {
+            const auto allocStatus = AudioQueueAllocateBuffer(queue, queueBufferSize, &bufferRef);
+            if (allocStatus != noErr || !bufferRef) {
+                std::fprintf(
+                    stderr,
+                    "[ntgcalls] AudioQueueAllocateBuffer failed status=%d index=%zu size=%u\n",
+                    static_cast<int>(allocStatus),
+                    i,
+                    queueBufferSize
+                );
+                std::fflush(stderr);
                 throw MediaDeviceError("Failed to allocate macOS audio queue buffer");
             }
             queueBuffers[i] = bufferRef;
             if (isCapture) {
                 bufferRef->mAudioDataByteSize = queueBufferSize;
-                if (AudioQueueEnqueueBuffer(queue, bufferRef, 0, nullptr) != noErr) {
+                const auto enqueueStatus = AudioQueueEnqueueBuffer(queue, bufferRef, 0, nullptr);
+                if (enqueueStatus != noErr) {
+                    std::fprintf(
+                        stderr,
+                        "[ntgcalls] AudioQueueEnqueueBuffer(input) failed status=%d index=%zu\n",
+                        static_cast<int>(enqueueStatus),
+                        i
+                    );
+                    std::fflush(stderr);
                     throw MediaDeviceError("Failed to enqueue macOS input buffer");
                 }
             } else {
                 memset(bufferRef->mAudioData, 0, bufferRef->mAudioDataBytesCapacity);
                 bufferRef->mAudioDataByteSize = bufferRef->mAudioDataBytesCapacity;
-                if (AudioQueueEnqueueBuffer(queue, bufferRef, 0, nullptr) != noErr) {
+                const auto enqueueStatus = AudioQueueEnqueueBuffer(queue, bufferRef, 0, nullptr);
+                if (enqueueStatus != noErr) {
+                    std::fprintf(
+                        stderr,
+                        "[ntgcalls] AudioQueueEnqueueBuffer(output) failed status=%d index=%zu\n",
+                        static_cast<int>(enqueueStatus),
+                        i
+                    );
+                    std::fflush(stderr);
                     throw MediaDeviceError("Failed to enqueue macOS output buffer");
                 }
             }

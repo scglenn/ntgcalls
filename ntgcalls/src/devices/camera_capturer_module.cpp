@@ -81,6 +81,15 @@ namespace ntgcalls {
         }
 
         const auto count = info ? info->NumberOfDevices() : 0;
+        std::fprintf(
+            stderr,
+            "[ntgcalls] CameraCapturerModule DeviceInfo count=%d requested_input=%s parsed_id=%s parsed_name=%s\n",
+            count,
+            desc.input.c_str(),
+            deviceId.c_str(),
+            deviceNameHint.c_str()
+        );
+        std::fflush(stderr);
         if (count > 0) {
             std::vector<std::pair<std::string, std::string>> devices;
             devices.reserve(count);
@@ -88,10 +97,19 @@ namespace ntgcalls {
                 char id[256] = {0};
                 char name[256] = {0};
                 if (info->GetDeviceName(i, name, sizeof(name), id, sizeof(id)) == -1) {
+                    std::fprintf(stderr, "[ntgcalls] CameraCapturerModule GetDeviceName failed index=%d\n", i);
                     continue;
                 }
+                std::fprintf(
+                    stderr,
+                    "[ntgcalls] CameraCapturerModule enumerated index=%d id=%s name=%s\n",
+                    i,
+                    id,
+                    name
+                );
                 devices.emplace_back(std::string(name), std::string(id));
             }
+            std::fflush(stderr);
 
             auto matchByName = [&](const std::string& wanted) -> std::optional<std::string> {
                 if (wanted.empty()) {
@@ -139,6 +157,8 @@ namespace ntgcalls {
         if (deviceId.empty()) {
             throw MediaDeviceError("No camera device id could be resolved");
         }
+        std::fprintf(stderr, "[ntgcalls] CameraCapturerModule resolved deviceId=%s\n", deviceId.c_str());
+        std::fflush(stderr);
 
         std::vector<std::string> candidates;
         if (!deviceId.empty()) {
@@ -180,9 +200,13 @@ namespace ntgcalls {
             capturer = webrtc::VideoCaptureFactory::Create(candidateId.c_str());
 #endif
             if (capturer) {
+                std::fprintf(stderr, "[ntgcalls] CameraCapturerModule Create success deviceId=%s\n", candidateId.c_str());
+                std::fflush(stderr);
                 deviceId = candidateId;
                 break;
             }
+            std::fprintf(stderr, "[ntgcalls] CameraCapturerModule Create failed deviceId=%s\n", candidateId.c_str());
+            std::fflush(stderr);
         }
         if (!capturer) {
             std::fprintf(stderr, "[ntgcalls] CameraCapturerModule failed to create video capturer\n");
@@ -196,7 +220,19 @@ namespace ntgcalls {
         requested.height = desc.height;
         requested.maxFPS = desc.fps;
         if (info) {
-            if (info->GetBestMatchedCapability(capturer->CurrentDeviceName(), requested, capability) != 0) {
+            const auto* currentDeviceName = capturer->CurrentDeviceName();
+            const auto bestMatchRc = info->GetBestMatchedCapability(currentDeviceName, requested, capability);
+            std::fprintf(
+                stderr,
+                "[ntgcalls] CameraCapturerModule GetBestMatchedCapability rc=%d current=%s requested=%dx%d@%d\n",
+                bestMatchRc,
+                currentDeviceName ? currentDeviceName : "<null>",
+                requested.width,
+                requested.height,
+                requested.maxFPS
+            );
+            std::fflush(stderr);
+            if (bestMatchRc != 0) {
                 capability = BuildFallbackCapability(info, capturer->CurrentDeviceName(), desc);
             }
             if (!capability.width || !capability.height || !capability.maxFPS) {
@@ -223,9 +259,15 @@ namespace ntgcalls {
 #ifdef IS_LINUX
         auto options = webrtc::VideoCaptureOptions();
         options.set_allow_v4l2(true);
-        return std::unique_ptr<webrtc::VideoCaptureModule::DeviceInfo>(webrtc::VideoCaptureFactory::CreateDeviceInfo(&options));
+        auto* raw = webrtc::VideoCaptureFactory::CreateDeviceInfo(&options);
+        std::fprintf(stderr, "[ntgcalls] CameraCapturerModule CreateDeviceInfo(v4l2) raw=%p\n", static_cast<void*>(raw));
+        std::fflush(stderr);
+        return std::unique_ptr<webrtc::VideoCaptureModule::DeviceInfo>(raw);
 #else
-        return std::unique_ptr<webrtc::VideoCaptureModule::DeviceInfo>(webrtc::VideoCaptureFactory::CreateDeviceInfo());
+        auto* raw = webrtc::VideoCaptureFactory::CreateDeviceInfo();
+        std::fprintf(stderr, "[ntgcalls] CameraCapturerModule CreateDeviceInfo raw=%p\n", static_cast<void*>(raw));
+        std::fflush(stderr);
+        return std::unique_ptr<webrtc::VideoCaptureModule::DeviceInfo>(raw);
 #endif
     }
 

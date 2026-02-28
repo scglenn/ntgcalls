@@ -223,6 +223,19 @@ namespace ntgcalls {
             isCapture ? 1 : 0,
             desc->input.c_str()
         );
+        try {
+            const auto metadata = json::parse(desc->input);
+            const auto id = metadata.contains("id") ? metadata["id"].get<std::string>() : std::string("<missing>");
+            const auto mic = metadata.contains("is_microphone") ? (metadata["is_microphone"].get<bool>() ? "true" : "false") : "<missing>";
+            std::fprintf(
+                stderr,
+                "[ntgcalls] CreateAudioDevice parsed id=%s is_microphone=%s\n",
+                id.c_str(),
+                mic
+            );
+        } catch (...) {
+            std::fprintf(stderr, "[ntgcalls] CreateAudioDevice metadata parse skipped (non-json input)\n");
+        }
         std::fflush(stderr);
 #ifdef IS_LINUX
         if (PulseDeviceModule::isSupported()) {
