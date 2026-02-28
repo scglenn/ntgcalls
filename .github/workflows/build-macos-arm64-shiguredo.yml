@@ -1,0 +1,66 @@
+name: Build macOS arm64 shared libs (shiguredo webrtc)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (e.g. v2.1.0-scglenn13-exp1)"
+        required: true
+        default: "v2.1.0-scglenn13-exp1"
+      publish_release:
+        description: "Publish GitHub Release"
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: |
+          brew install cmake
+
+      - name: Build shared library
+        env:
+          NTG_USE_SYSTEM_CLANG: "1"
+          NTG_USE_LIBCXX: "1"
+          NTG_WEBRTC_BUILD_REPO: "shiguredo-webrtc-build/webrtc-build"
+        run: |
+          python3 setup.py build_lib
+
+      - name: Package shared libs
+        run: |
+          mkdir -p dist
+          cp -R shared-output/include dist/include
+          cp -R shared-output/lib dist/lib
+          cd dist
+          zip -r "ntgcalls.macos-arm64-shared_libs.zip" include lib
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ntgcalls.macos-arm64-shared_libs-shiguredo
+          path: dist/ntgcalls.macos-arm64-shared_libs.zip
+
+      - name: Create Release
+        if: ${{ inputs.publish_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          name: "NTgCalls macOS arm64 (shiguredo webrtc) ${{ inputs.tag }}"
+          draft: false
+          prerelease: true
+          files: |
+            dist/ntgcalls.macos-arm64-shared_libs.zip
