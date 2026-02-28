@@ -126,14 +126,10 @@ namespace wrtc {
     }
 
     webrtc::Environment PeerConnectionFactory::environment() {
-        return webrtc::CreateEnvironment(
-            webrtc::FieldTrials::Create(
-                "WebRTC-DataChannel-Dcsctp/Enabled/"
-                "WebRTC-Audio-MinimizeResamplingOnMobile/Enabled/"
-                "WebRTC-Audio-iOS-Holding/Enabled/"
-                "WebRTC-IceFieldTrials/skip_relay_to_non_relay_connections:true/"
-            )
-        );
+        // Some libwebrtc builds (e.g. shiguredo prebuilt packages) do not export
+        // FieldTrials::Create from libwebrtc.a. Use default environment creation
+        // to keep ABI compatibility across providers.
+        return webrtc::CreateEnvironment();
     }
 
     webrtc::MediaFactory* PeerConnectionFactory::mediaFactory() const {
