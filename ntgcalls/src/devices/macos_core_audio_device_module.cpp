@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <cstdio>
 
 #include <rtc_base/logging.h>
 
@@ -25,6 +26,13 @@ namespace ntgcalls {
             throw MediaDeviceError("Invalid device metadata");
         }
         RTC_LOG(LS_INFO) << "MacOSCoreAudioDeviceModule init isCapture=" << isCapture << " deviceId=" << deviceId;
+        std::fprintf(
+            stderr,
+            "[ntgcalls] MacOSCoreAudioDeviceModule init isCapture=%d deviceId=%s\n",
+            isCapture ? 1 : 0,
+            deviceId.c_str()
+        );
+        std::fflush(stderr);
 
         frameSize = static_cast<size_t>(sink->frameSize());
 
@@ -59,6 +67,8 @@ namespace ntgcalls {
 
         if (callbackStatus != noErr || !queue) {
             RTC_LOG(LS_ERROR) << "AudioQueue create failed status=" << callbackStatus;
+            std::fprintf(stderr, "[ntgcalls] AudioQueue create failed status=%d\n", static_cast<int>(callbackStatus));
+            std::fflush(stderr);
             throw MediaDeviceError("Failed to create macOS audio queue");
         }
 
@@ -101,8 +111,12 @@ namespace ntgcalls {
         const auto status = AudioQueueSetProperty(queue, kAudioQueueProperty_CurrentDevice, &cfDeviceId, sizeof(cfDeviceId));
         if (status != noErr) {
             RTC_LOG(LS_WARNING) << "Failed to select macOS audio device uid=" << deviceId << " status=" << status;
+            std::fprintf(stderr, "[ntgcalls] Failed to select macOS audio device uid=%s status=%d\n", deviceId.c_str(), static_cast<int>(status));
+            std::fflush(stderr);
         } else {
             RTC_LOG(LS_INFO) << "Selected macOS audio device uid=" << deviceId;
+            std::fprintf(stderr, "[ntgcalls] Selected macOS audio device uid=%s\n", deviceId.c_str());
+            std::fflush(stderr);
         }
         CFRelease(cfDeviceId);
     }

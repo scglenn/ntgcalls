@@ -7,6 +7,7 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include <cstdio>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -163,6 +164,13 @@ namespace ntgcalls {
             tried.insert(candidateId);
             RTC_LOG(LS_INFO) << "CameraCapturerModule trying capture deviceId=" << candidateId
                              << " requested=" << desc.input;
+            std::fprintf(
+                stderr,
+                "[ntgcalls] CameraCapturerModule trying capture deviceId=%s requested=%s\n",
+                candidateId.c_str(),
+                desc.input.c_str()
+            );
+            std::fflush(stderr);
 #ifdef IS_LINUX
             auto options = webrtc::VideoCaptureOptions();
             options.set_allow_v4l2(true);
@@ -176,6 +184,8 @@ namespace ntgcalls {
             }
         }
         if (!capturer) {
+            std::fprintf(stderr, "[ntgcalls] CameraCapturerModule failed to create video capturer\n");
+            std::fflush(stderr);
             throw MediaDeviceError("Failed to create video capturer");
         }
         capturer->RegisterCaptureDataCallback(this);
@@ -283,6 +293,8 @@ namespace ntgcalls {
         if (rc != 0) {
             destroy();
             RTC_LOG(LS_ERROR) << "CameraCapturerModule StartCapture failed rc=" << rc;
+            std::fprintf(stderr, "[ntgcalls] CameraCapturerModule StartCapture failed rc=%d\n", rc);
+            std::fflush(stderr);
             throw MediaDeviceError("Failed to start camera capture");
         }
     }
