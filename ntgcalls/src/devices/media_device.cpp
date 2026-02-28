@@ -12,10 +12,11 @@
 #include <ntgcalls/devices/pulse_device_module.hpp>
 #elif IS_WINDOWS
 #include <ntgcalls/devices/win_core_device_module.hpp>
+#elif IS_MACOS
+#include <ntgcalls/devices/macos_core_audio_device_module.hpp>
 #elif IS_ANDROID
 #include <ntgcalls/devices/oboe_device_module.hpp>
 #include <ntgcalls/devices/java_video_capturer_module.hpp>
-#elif IS_MACOS
 #include <CoreAudio/CoreAudio.h>
 #include <CoreFoundation/CoreFoundation.h>
 #endif
@@ -228,6 +229,11 @@ namespace ntgcalls {
 #elif IS_ANDROID
         RTC_LOG(LS_INFO) << "Using Oboe module for input";
         return std::make_unique<OboeDeviceModule>(desc, isCapture, sink);
+#elif IS_MACOS
+        if (MacOSCoreAudioDeviceModule::isSupported()) {
+            RTC_LOG(LS_INFO) << "Using macOS CoreAudio module for input";
+            return std::make_unique<MacOSCoreAudioDeviceModule>(desc, isCapture, sink);
+        }
 #endif
         throw MediaDeviceError("Unsupported platform for audio device");
     }
