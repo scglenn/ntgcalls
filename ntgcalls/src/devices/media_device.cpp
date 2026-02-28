@@ -15,9 +15,49 @@
 #elif IS_ANDROID
 #include <ntgcalls/devices/oboe_device_module.hpp>
 #include <ntgcalls/devices/java_video_capturer_module.hpp>
+#elif IS_MACOS
+#include <CoreAudio/CoreAudio.h>
+#include <CoreFoundation/CoreFoundation.h>
 #endif
 
 namespace ntgcalls {
+#ifdef IS_MACOS
+    namespace {
+        std::string CFStringToStd(CFStringRef value) {
+            if (!value) {
+                return {};
+            }
+            char buffer[512];
+            if (CFStringGetCString(value, buffer, sizeof(buffer), kCFStringEncodingUTF8)) {
+                return buffer;
+            }
+            return {};
+        }
+
+        bool HasScopeChannels(const AudioObjectID deviceId, const AudioObjectPropertyScope scope) {
+            AudioObjectPropertyAddress address{
+                kAudioDevicePropertyStreamConfiguration,
+                scope,
+                kAudioObjectPropertyElementMain
+            };
+            UInt32 size = 0;
+            if (AudioObjectGetPropertyDataSize(deviceId, &address, 0, nullptr, &size) != noErr || size == 0) {
+                return false;
+            }
+            auto buffer = std::make_unique<uint8_t[]>(size);
+            auto* streamConfig = reinterpret_cast<AudioBufferList*>(buffer.get());
+            if (AudioObjectGetPropertyData(deviceId, &address, 0, nullptr, &size, streamConfig) != noErr) {
+                return false;
+            }
+            UInt32 channels = 0;
+            for (UInt32 i = 0; i < streamConfig->mNumberBuffers; ++i) {
+                channels += streamConfig->mBuffers[i].mNumberChannels;
+            }
+            return channels > 0;
+        }
+    } // namespace
+#endif
+
     std::vector<DeviceInfo> MediaDevice::GetAudioDevices() {
 #ifdef IS_LINUX
         if (PulseDeviceModule::isSupported()) {
@@ -40,6 +80,72 @@ namespace ntgcalls {
         std::vector<DeviceInfo> devices;
         appendDevices(devices, "default", true);
         appendDevices(devices, "default", false);
+        return devices;
+#elif IS_MACOS
+        std::vector<DeviceInfo> devices;
+        AudioObjectPropertyAddress allDevicesAddress{
+            kAudioHardwarePropertyDevices,
+            kAudioObjectPropertyScopeGlobal,
+            kAudioObjectPropertyElementMain
+        };
+        UInt32 size = 0;
+        if (AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &allDevicesAddress, 0, nullptr, &size) != noErr || size == 0) {
+            return {};
+        }
+
+        const auto deviceCount = static_cast<size_t>(size / sizeof(AudioObjectID));
+        auto ids = std::make_unique<AudioObjectID[]>(deviceCount);
+        if (AudioObjectGetPropertyData(kAudioObjectSystemObject, &allDevicesAddress, 0, nullptr, &size, ids.get()) != noErr) {
+            return {};
+        }
+
+        for (size_t i = 0; i < deviceCount; ++i) {
+            const auto id = ids[i];
+            AudioObjectPropertyAddress nameAddress{
+                kAudioObjectPropertyName,
+                kAudioObjectPropertyScopeGlobal,
+                kAudioObjectPropertyElementMain
+            };
+            AudioObjectPropertyAddress uidAddress{
+                kAudioDevicePropertyDeviceUID,
+                kAudioObjectPropertyScopeGlobal,
+                kAudioObjectPropertyElementMain
+            };
+
+            CFStringRef nameRef = nullptr;
+            CFStringRef uidRef = nullptr;
+            UInt32 nameSize = sizeof(nameRef);
+            UInt32 uidSize = sizeof(uidRef);
+            if (AudioObjectGetPropertyData(id, &nameAddress, 0, nullptr, &nameSize, &nameRef) != noErr ||
+                AudioObjectGetPropertyData(id, &uidAddress, 0, nullptr, &uidSize, &uidRef) != noErr) {
+                if (nameRef) CFRelease(nameRef);
+                if (uidRef) CFRelease(uidRef);
+                continue;
+            }
+
+            const auto name = CFStringToStd(nameRef);
+            const auto uid = CFStringToStd(uidRef);
+            CFRelease(nameRef);
+            CFRelease(uidRef);
+            if (uid.empty()) {
+                continue;
+            }
+
+            if (HasScopeChannels(id, kAudioObjectPropertyScopeInput)) {
+                const json metadata = {
+                    {"is_microphone", true},
+                    {"id", uid}
+                };
+                devices.emplace_back(name.empty() ? "Microphone" : name, metadata.dump());
+            }
+            if (HasScopeChannels(id, kAudioObjectPropertyScopeOutput)) {
+                const json metadata = {
+                    {"is_microphone", false},
+                    {"id", uid}
+                };
+                devices.emplace_back(name.empty() ? "Speaker" : name, metadata.dump());
+            }
+        }
         return devices;
 #endif
         return {};
