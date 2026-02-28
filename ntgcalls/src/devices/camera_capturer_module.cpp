@@ -3,8 +3,12 @@
 //
 
 #if !defined(IS_ANDROID)
+#include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
+#include <utility>
+#include <vector>
 
 #include <libyuv/scale.h>
 #include <ntgcalls/devices/camera_capturer_module.hpp>
@@ -53,13 +57,88 @@ namespace ntgcalls {
 
     CameraCapturerModule::CameraCapturerModule(const VideoDescription& desc, BaseSink* sink): BaseIO(sink), BaseReader(sink), desc(desc) {
         std::string deviceId;
+        std::string deviceNameHint;
         try {
-            auto sourceMetadata = json::parse(desc.input);
-            deviceId = sourceMetadata["id"].get<std::string>();
+            const auto sourceMetadata = json::parse(desc.input);
+            if (sourceMetadata.contains("id")) {
+                deviceId = sourceMetadata["id"].get<std::string>();
+            }
+            if (sourceMetadata.contains("name")) {
+                deviceNameHint = sourceMetadata["name"].get<std::string>();
+            }
         } catch (...) {
-            throw MediaDeviceError("Invalid device metadata");
+            // Backward compatibility: allow plain device id or name as input.
+            deviceId = desc.input;
+            deviceNameHint = desc.input;
         }
-        RTC_LOG(LS_INFO) << "CameraCapturerModule creating capture for deviceId=" << deviceId;
+
+        const auto info = CreateDeviceInfo();
+        if (!info) {
+            throw MediaDeviceError("Failed to create camera device info");
+        }
+
+        const auto count = info->NumberOfDevices();
+        if (count > 0) {
+            std::vector<std::pair<std::string, std::string>> devices;
+            devices.reserve(count);
+            for (int i = 0; i < count; ++i) {
+                char id[256] = {0};
+                char name[256] = {0};
+                if (info->GetDeviceName(i, name, sizeof(name), id, sizeof(id)) == -1) {
+                    continue;
+                }
+                devices.emplace_back(std::string(name), std::string(id));
+            }
+
+            auto matchByName = [&](const std::string& wanted) -> std::optional<std::string> {
+                if (wanted.empty()) {
+                    return std::nullopt;
+                }
+                for (const auto& [name, id] : devices) {
+                    if (name == wanted) {
+                        return id;
+                    }
+                }
+                for (const auto& [name, id] : devices) {
+                    if (name.find(wanted) != std::string::npos) {
+                        return id;
+                    }
+                }
+                return std::nullopt;
+            };
+
+            auto hasId = [&](const std::string& candidate) {
+                return std::any_of(devices.begin(), devices.end(), [&](const auto& entry) {
+                    return entry.second == candidate;
+                });
+            };
+
+            if (!deviceId.empty() && !hasId(deviceId)) {
+                if (const auto byName = matchByName(deviceId)) {
+                    deviceId = *byName;
+                }
+            }
+            if (!deviceId.empty() && !hasId(deviceId)) {
+                if (const auto byName = matchByName(deviceNameHint)) {
+                    deviceId = *byName;
+                }
+            }
+            if (deviceId.empty()) {
+                if (const auto byName = matchByName(deviceNameHint)) {
+                    deviceId = *byName;
+                }
+            }
+            if (deviceId.empty() && !devices.empty()) {
+                deviceId = devices.front().second;
+            }
+        }
+
+        if (deviceId.empty()) {
+            throw MediaDeviceError("No camera device id could be resolved");
+        }
+
+        RTC_LOG(LS_INFO) << "CameraCapturerModule creating capture for deviceId=" << deviceId
+                         << " requested=" << desc.input;
 #ifdef IS_LINUX
         auto options = webrtc::VideoCaptureOptions();
         options.set_allow_v4l2(true);
@@ -71,10 +150,6 @@ namespace ntgcalls {
             throw MediaDeviceError("Failed to create video capturer");
         }
         capturer->RegisterCaptureDataCallback(this);
-        const auto info = CreateDeviceInfo();
-        if (!info) {
-            throw MediaDeviceError("Failed to create camera device info");
-        }
         auto requested = webrtc::VideoCaptureCapability();
         requested.videoType = webrtc::VideoType::kI420;
         requested.width = desc.width;
