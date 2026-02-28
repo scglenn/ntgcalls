@@ -7,6 +7,7 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -137,15 +138,43 @@ namespace ntgcalls {
             throw MediaDeviceError("No camera device id could be resolved");
         }
 
-        RTC_LOG(LS_INFO) << "CameraCapturerModule creating capture for deviceId=" << deviceId
-                         << " requested=" << desc.input;
+        std::vector<std::string> candidates;
+        if (!deviceId.empty()) {
+            candidates.push_back(deviceId);
+        }
+        if (count > 0) {
+            for (int i = 0; i < count; ++i) {
+                char id[256] = {0};
+                char name[256] = {0};
+                if (info->GetDeviceName(i, name, sizeof(name), id, sizeof(id)) == -1) {
+                    continue;
+                }
+                if (id[0] != '\0') {
+                    candidates.emplace_back(id);
+                }
+            }
+        }
+
+        std::unordered_set<std::string> tried;
+        for (const auto& candidateId : candidates) {
+            if (candidateId.empty() || tried.contains(candidateId)) {
+                continue;
+            }
+            tried.insert(candidateId);
+            RTC_LOG(LS_INFO) << "CameraCapturerModule trying capture deviceId=" << candidateId
+                             << " requested=" << desc.input;
 #ifdef IS_LINUX
-        auto options = webrtc::VideoCaptureOptions();
-        options.set_allow_v4l2(true);
-        capturer = webrtc::VideoCaptureFactory::Create(&options, deviceId.c_str());
+            auto options = webrtc::VideoCaptureOptions();
+            options.set_allow_v4l2(true);
+            capturer = webrtc::VideoCaptureFactory::Create(&options, candidateId.c_str());
 #else
-        capturer = webrtc::VideoCaptureFactory::Create(deviceId.c_str());
+            capturer = webrtc::VideoCaptureFactory::Create(candidateId.c_str());
 #endif
+            if (capturer) {
+                deviceId = candidateId;
+                break;
+            }
+        }
         if (!capturer) {
             throw MediaDeviceError("Failed to create video capturer");
         }
