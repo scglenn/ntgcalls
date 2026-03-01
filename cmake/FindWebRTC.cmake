@@ -69,6 +69,17 @@ if(NOT TARGET WebRTC::webrtc)
         SOURCE_DIR ${WEBRTC_SRC}
     )
 
+
+    if (EXISTS ${WEBRTC_SRC}/webrtc/include AND EXISTS ${WEBRTC_SRC}/webrtc/lib)
+        set(WEBRTC_SRC ${WEBRTC_SRC}/webrtc)
+        set(WEBRTC_INCLUDE ${WEBRTC_SRC}/include)
+        set(WEBRTC_LIB_DIR ${WEBRTC_SRC}/lib)
+        if (ANDROID)
+            set(WEBRTC_LIB_DIR ${WEBRTC_LIB_DIR}/${ANDROID_ABI})
+        endif ()
+        set(WEBRTC_LIB ${WEBRTC_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}webrtc${CMAKE_STATIC_LIBRARY_SUFFIX})
+    endif ()
+
     add_library(WebRTC::webrtc STATIC IMPORTED)
 
     set(_DIRS
