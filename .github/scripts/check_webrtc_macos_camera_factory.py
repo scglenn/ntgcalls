@@ -70,6 +70,15 @@ def main() -> int:
             print("video_capture_factory.o not found in archive", file=sys.stderr)
             return 1
 
+
+        nm_output = run("nm", "-gU", str(archive)).stdout
+        if "__ZN6webrtc11FieldTrials6Create" not in nm_output:
+            print(
+                "ERROR: libwebrtc is missing webrtc::FieldTrials::Create, incompatible with current wrtc build.",
+                file=sys.stderr,
+            )
+            return 1
+
         asm = run("otool", "-tvV", str(obj)).stdout
         functions = parse_functions(asm)
 
