@@ -80,6 +80,31 @@ if(NOT TARGET WebRTC::webrtc)
         set(WEBRTC_LIB ${WEBRTC_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}webrtc${CMAKE_STATIC_LIBRARY_SUFFIX})
     endif ()
 
+
+    if (MACOS)
+        find_program(NTG_PYTHON3_EXECUTABLE NAMES python3)
+        if (NOT NTG_PYTHON3_EXECUTABLE)
+            message(FATAL_ERROR "python3 is required for libwebrtc validation")
+        endif ()
+        set(NTG_WEBRTC_CHECK_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/../.github/scripts/check_webrtc_macos_camera_factory.py)
+        if (EXISTS ${NTG_WEBRTC_CHECK_SCRIPT})
+            execute_process(
+                COMMAND ${NTG_PYTHON3_EXECUTABLE} ${NTG_WEBRTC_CHECK_SCRIPT} ${WEBRTC_LIB}
+                RESULT_VARIABLE NTG_WEBRTC_CHECK_STATUS
+                OUTPUT_VARIABLE NTG_WEBRTC_CHECK_OUT
+                ERROR_VARIABLE NTG_WEBRTC_CHECK_ERR
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_STRIP_TRAILING_WHITESPACE
+            )
+            if (NOT NTG_WEBRTC_CHECK_STATUS EQUAL 0)
+                message(FATAL_ERROR "libwebrtc validation failed:
+${NTG_WEBRTC_CHECK_OUT}
+${NTG_WEBRTC_CHECK_ERR}")
+            endif ()
+            message(STATUS "${NTG_WEBRTC_CHECK_OUT}")
+        endif ()
+    endif ()
+
     add_library(WebRTC::webrtc STATIC IMPORTED)
 
     set(_DIRS
