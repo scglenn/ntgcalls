@@ -1,7 +1,14 @@
 GetProperty("version.webrtc" WEBRTC_REVISION)
 string(REGEX MATCH "[0-9]+\\.([0-9]+)" WEBRTC_BRANCH "${WEBRTC_REVISION}")
 set(WEBRTC_BRANCH branch-heads/${CMAKE_MATCH_1})
-set(WEBRTC_GIT https://github.com/pytgcalls/webrtc-build)
+set(NTG_WEBRTC_RELEASE_BASE_URL "$ENV{NTG_WEBRTC_RELEASE_BASE_URL}" CACHE STRING "Base URL for libwebrtc release assets")
+set(NTG_WEBRTC_RELEASE_TAG "$ENV{NTG_WEBRTC_RELEASE_TAG}" CACHE STRING "Release tag for libwebrtc assets")
+if (NOT NTG_WEBRTC_RELEASE_BASE_URL)
+    set(NTG_WEBRTC_RELEASE_BASE_URL "https://github.com/pytgcalls/webrtc-build/releases/download")
+endif ()
+if (NOT NTG_WEBRTC_RELEASE_TAG)
+    set(NTG_WEBRTC_RELEASE_TAG "m${WEBRTC_REVISION}")
+endif ()
 set(WEBRTC_DIR ${DEPS_DIR}/libwebrtc)
 set(WEBRTC_SRC ${WEBRTC_DIR}/src)
 set(WEBRTC_INCLUDE ${WEBRTC_SRC}/include)
@@ -54,8 +61,10 @@ if(NOT TARGET WebRTC::webrtc)
     endif ()
     set(FILE_NAME ${FILE_NAME}${ARCHIVE_FORMAT})
 
+    message(STATUS "libwebrtc source ${NTG_WEBRTC_RELEASE_BASE_URL}/${NTG_WEBRTC_RELEASE_TAG}/${FILE_NAME}")
+
     DownloadProject(
-        URL ${WEBRTC_GIT}/releases/download/m${WEBRTC_REVISION}/${FILE_NAME}
+        URL ${NTG_WEBRTC_RELEASE_BASE_URL}/${NTG_WEBRTC_RELEASE_TAG}/${FILE_NAME}
         DOWNLOAD_DIR ${WEBRTC_DIR}/download
         SOURCE_DIR ${WEBRTC_SRC}
     )

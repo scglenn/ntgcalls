@@ -11,6 +11,14 @@ on:
         description: "Publish GitHub Release"
         type: boolean
         default: true
+      webrtc_release_base_url:
+        description: "Optional libwebrtc release base URL (without tag/file)"
+        required: false
+        default: ""
+      webrtc_release_tag:
+        description: "Optional libwebrtc release tag"
+        required: false
+        default: ""
 
 jobs:
   build:
@@ -36,8 +44,14 @@ jobs:
         env:
           NTG_USE_SYSTEM_CLANG: "1"
           NTG_USE_LIBCXX: "1"
+          NTG_WEBRTC_RELEASE_BASE_URL: ${{ inputs.webrtc_release_base_url }}
+          NTG_WEBRTC_RELEASE_TAG: ${{ inputs.webrtc_release_tag }}
         run: |
           python3 setup.py build_lib
+
+      - name: Validate WebRTC camera factory (macOS)
+        run: |
+          python3 .github/scripts/check_webrtc_macos_camera_factory.py deps/libwebrtc/src/lib/libwebrtc.a
 
       - name: Package shared libs
         run: |
