@@ -50,6 +50,7 @@ jobs:
           python3 setup.py build_lib
 
       - name: Validate WebRTC camera factory (macOS)
+        if: ${{ inputs.webrtc_release_base_url != '' || inputs.webrtc_release_tag != '' }}
         run: |
           python3 .github/scripts/check_webrtc_macos_camera_factory.py deps/libwebrtc/src/lib/libwebrtc.a
 
