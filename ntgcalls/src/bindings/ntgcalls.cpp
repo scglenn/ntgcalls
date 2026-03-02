@@ -640,6 +640,20 @@ NTG_C_EXPORT int ntg_send_external_frame(const uintptr_t ptr, const int64_t chat
     }
     PREPARE_ASYNC_END
 }
+NTG_C_EXPORT int ntg_send_external_frame_nv12(const uintptr_t ptr, const int64_t chatID, const ntg_stream_device_enum device,
+                                           uint8_t* yPlane, const int yPlaneSize, const int yStride,
+                                           uint8_t* uvPlane, const int uvPlaneSize, const int uvStride,
+                                           const ntg_frame_data_struct frameData, ntg_async_struct future) {
+    PREPARE_ASYNC(sendExternalFrameNV12, chatID, parseStreamDevice(device),
+                  bytes::binary(yPlane, yPlane + yPlaneSize), yStride,
+                  bytes::binary(uvPlane, uvPlane + uvPlaneSize), uvStride,
+                  parseFrameData(frameData))
+    [future] {
+        *future.errorCode = 0;
+        future.promise(future.userData);
+    }
+    PREPARE_ASYNC_END
+}
 NTG_C_EXPORT int ntg_send_broadcast_timestamp(const uintptr_t ptr, const int64_t chatId, const int64_t timestamp, ntg_async_struct future) {
     PREPARE_ASYNC(sendBroadcastTimestamp, chatId, timestamp)
     [future] {

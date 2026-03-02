@@ -20,6 +20,9 @@ namespace ntgcalls {
         webrtc::scoped_refptr<webrtc::MediaStreamTrackInterface> createTrack() override;
 
         void sendData(uint8_t* sample, size_t size, wrtc::FrameData additionalData) override;
+        void sendDataNV12(const uint8_t* yPlane, size_t ySize, int yStride,
+                          const uint8_t* uvPlane, size_t uvSize, int uvStride,
+                          wrtc::FrameData additionalData);
     };
 }
 

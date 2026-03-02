@@ -82,6 +82,8 @@ namespace ntgcalls {
         void onFrames(const std::function<void(Mode, Device, const std::vector<wrtc::Frame>&)>& callback);
 
         void sendExternalFrame(Device device, const bytes::binary& data, wrtc::FrameData frameData);
+        void sendExternalFrameNV12(Device device, const bytes::binary& yPlane, int yStride,
+                                   const bytes::binary& uvPlane, int uvStride, wrtc::FrameData frameData);
 
     private:
         using StreamId = std::pair<Mode, Device>;

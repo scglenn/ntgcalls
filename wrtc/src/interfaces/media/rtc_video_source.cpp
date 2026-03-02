@@ -30,4 +30,14 @@ namespace wrtc {
             .build();
         source->PushFrame(frame);
     }
+
+    void RTCVideoSource::OnFrameNV12(const nv12ImageData& data, const FrameData additionalData) const {
+        const auto frame = webrtc::VideoFrame::Builder()
+            .set_video_frame_buffer(data.buffer())
+            .set_timestamp_rtp(0)
+            .set_timestamp_ms(additionalData.absoluteCaptureTimestampMs)
+            .set_rotation(additionalData.rotation)
+            .build();
+        source->PushFrame(frame);
+    }
 } // wrtc
