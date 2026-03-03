@@ -298,6 +298,16 @@ namespace ntgcalls {
         END_ASYNC
     }
 
+    ASYNC_RETURN(void) NTgCalls::sendExternalFrameNV12(const int64_t chatId, const StreamManager::Device device,
+                                                           const BYTES(bytes::binary) &yPlane, const int yStride,
+                                                           const BYTES(bytes::binary) &uvPlane, const int uvStride,
+                                                           const wrtc::FrameData frameData) {
+        SMART_ASYNC(this, chatId, device, yPlane = CPP_BYTES(yPlane, bytes::binary), yStride,
+                    uvPlane = CPP_BYTES(uvPlane, bytes::binary), uvStride, frameData)
+        safeConnection(chatId)->sendExternalFrameNV12(device, yPlane, yStride, uvPlane, uvStride, frameData);
+        END_ASYNC
+    }
+
     ASYNC_RETURN(uint64_t) NTgCalls::time(const int64_t chatId, const StreamManager::Mode mode) {
         SMART_ASYNC(this, chatId, mode)
         return safeConnection(chatId)->time(mode);

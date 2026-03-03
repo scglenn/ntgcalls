@@ -350,6 +350,12 @@ NTG_C_EXPORT int ntg_get_connection_mode(uintptr_t ptr, int64_t chatID, ntg_conn
 
 NTG_C_EXPORT int ntg_send_external_frame(uintptr_t ptr, int64_t chatID, ntg_stream_device_enum device, uint8_t* frame, int frameSize, ntg_frame_data_struct frameData, ntg_async_struct future);
 
+// Sends an external NV12 frame using separate Y and UV planes.
+NTG_C_EXPORT int ntg_send_external_frame_nv12(uintptr_t ptr, int64_t chatID, ntg_stream_device_enum device,
+                                              uint8_t* yPlane, int yPlaneSize, int yStride,
+                                              uint8_t* uvPlane, int uvPlaneSize, int uvStride,
+                                              ntg_frame_data_struct frameData, ntg_async_struct future);
+
 NTG_C_EXPORT int ntg_send_broadcast_timestamp(uintptr_t ptr, int64_t chatId, int64_t timestamp, ntg_async_struct future);
 
 NTG_C_EXPORT int ntg_send_broadcast_part(uintptr_t ptr, int64_t chatId, int64_t segmentId, int32_t partId, ntg_media_segment_status_enum status, bool qualityUpdate, const uint8_t* frame, int frameSize, ntg_async_struct future);

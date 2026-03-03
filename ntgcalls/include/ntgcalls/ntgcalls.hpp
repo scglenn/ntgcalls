@@ -136,6 +136,10 @@ namespace ntgcalls {
         ASYNC_RETURN(void) sendSignalingData(int64_t chatId, const BYTES(bytes::binary) &msgKey);
 
         ASYNC_RETURN(void) sendExternalFrame(int64_t chatId, StreamManager::Device device, const BYTES(bytes::binary) &data, wrtc::FrameData frameData);
+        ASYNC_RETURN(void) sendExternalFrameNV12(int64_t chatId, StreamManager::Device device,
+                                                const BYTES(bytes::binary) &yPlane, int yStride,
+                                                const BYTES(bytes::binary) &uvPlane, int uvStride,
+                                                wrtc::FrameData frameData);
 
         ASYNC_RETURN(std::map<int64_t, StreamManager::CallInfo>) calls();
     };

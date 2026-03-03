@@ -199,6 +199,19 @@ namespace ntgcalls {
         }
     }
 
+    void StreamManager::sendExternalFrameNV12(const Device device, const bytes::binary& yPlane, const int yStride,
+                                              const bytes::binary& uvPlane, const int uvStride, const wrtc::FrameData frameData) {
+        const StreamId id(Capture, device);
+        if (!externalReaders.contains(device) || !streams.contains(id)) {
+            throw InvalidParams("External source not initialized");
+        }
+        if (const auto stream = dynamic_cast<VideoStreamer*>(streams[id].get())) {
+            stream->sendDataNV12(yPlane.data(), yPlane.size(), yStride, uvPlane.data(), uvPlane.size(), uvStride, frameData);
+            return;
+        }
+        throw InvalidParams("External NV12 source only supports video devices");
+    }
+
     bool StreamManager::updateMute(const bool isMuted) {
         std::lock_guard lock(mutex);
         bool changed = false;
